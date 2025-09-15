@@ -1,0 +1,18 @@
+# Cloudflare Workers configuration for worker-api
+# Important: Do not commit secrets here. Use `wrangler secret put`.
+
+name = "worker-api"
+compatibility_date = "2025-01-01"
+main = "src/index.js"
+
+[vars]
+# Safe to commit: public, non-secret values
+SUPABASE_URL = "https://paeqznvftnvfpxrvufcg.supabase.co"
+R2_ACCOUNT_ID = "dee7bfe0e9b2b9c09a16d24c60369f36"
+R2_BUCKET_NAME = "video-uploads"
+R2_ENDPOINT = "https://dee7bfe0e9b2b9c09a16d24c60369f36.r2.cloudflarestorage.com"
+
+# Secrets (DO NOT put values in this file):
+# SUPABASE_SERVICE_ROLE_KEY
+# R2_ACCESS_KEY_ID
+# R2_SECRET_ACCESS_KEY

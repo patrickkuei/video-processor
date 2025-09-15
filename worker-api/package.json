@@ -1,7 +1,20 @@
 {
-  "type": "module",
-  "dependencies": {
-    "@supabase/supabase-js": "^2.57.4",
-    "dotenv": "^17.2.2"
-  }
+	"name": "worker-api",
+	"version": "0.0.0",
+	"private": true,
+	"scripts": {
+		"deploy": "wrangler deploy",
+		"dev": "wrangler dev",
+		"start": "wrangler dev",
+		"test": "vitest"
+	},
+	"devDependencies": {
+		"@cloudflare/vitest-pool-workers": "^0.8.19",
+		"vitest": "~3.2.0",
+		"wrangler": "^4.37.0"
+	},
+	"dependencies": {
+		"@supabase/supabase-js": "^2.57.4",
+		"aws4fetch": "^1.0.20"
+	}
 }
