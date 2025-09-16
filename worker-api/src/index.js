@@ -9,13 +9,41 @@ function getSupabase(env) {
 	return createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 }
 
+const VALIDATION_CONFIG = {
+	MAX_SIZE_MB: 10,
+	ALLOWED_MIME_TYPES: ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-msvideo', 'video/x-matroska'],
+	get MAX_SIZE_BYTES() {
+		return this.MAX_SIZE_MB * 1024 * 1024;
+	},
+};
+
 // upload-url
 router.post('/upload-url', async (request, env) => {
 	try {
 		const body = await request.json();
-		const { filename, contentType } = body;
-		if (!filename || !contentType) {
-			return new Response(JSON.stringify({ error: 'filename and contentType required' }), { status: 400 });
+		const { filename, contentType, fileSize } = body;
+		if (!filename || !contentType || fileSize === undefined) {
+			return new Response(JSON.stringify({ error: 'filename, contentType, and fileSize are required' }), {
+				status: 400,
+				headers: { 'Content-Type': 'application/json' },
+			});
+		}
+
+		if (fileSize > VALIDATION_CONFIG.MAX_SIZE_BYTES) {
+			return new Response(JSON.stringify({ error: `File size exceeds limit of ${VALIDATION_CONFIG.MAX_SIZE_MB}MB.` }), {
+				status: 400,
+				headers: { 'Content-Type': 'application/json' },
+			});
+		}
+
+		if (!VALIDATION_CONFIG.ALLOWED_MIME_TYPES.includes(contentType.toLowerCase())) {
+			return new Response(
+				JSON.stringify({ error: `Invalid file type. Please upload one of: ${VALIDATION_CONFIG.ALLOWED_MIME_TYPES.join(', ')}` }),
+				{
+					status: 400,
+					headers: { 'Content-Type': 'application/json' },
+				}
+			);
 		}
 
 		const objectKey = crypto.randomUUID() + '-' + filename;

@@ -2,8 +2,13 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createJob, getUploadUrl, putFileToUrl } from "../api/client";
 
-const MAX_SIZE = 100 * 1024 * 1024; // 100MB
-const ALLOWED_EXT = [".mp4", ".mov"];
+const VALIDATION_CONFIG = {
+  MAX_SIZE_MB: 10,
+  ALLOWED_MIME_TYPES: ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-msvideo', 'video/x-matroska'],
+  get MAX_SIZE_BYTES() {
+    return this.MAX_SIZE_MB * 1024 * 1024;
+  }
+};
 
 function humanSize(bytes) {
   const units = ["B", "KB", "MB", "GB"];
@@ -30,15 +35,14 @@ export default function UploadPage() {
       return;
     }
     // Validate size
-    if (f.size > MAX_SIZE) {
-      setError(`檔案過大，限制 100MB。現在是 ${humanSize(f.size)}`);
+    if (f.size > VALIDATION_CONFIG.MAX_SIZE_BYTES) {
+      setError(`檔案過大，限制 ${VALIDATION_CONFIG.MAX_SIZE_MB}MB。現在是 ${humanSize(f.size)}`);
       setFile(null);
       return;
     }
-    // Validate extension
-    const name = f.name.toLowerCase();
-    if (!ALLOWED_EXT.some((ext) => name.endsWith(ext))) {
-      setError("僅支援 .mp4 / .mov");
+    // Validate MIME type
+    if (!VALIDATION_CONFIG.ALLOWED_MIME_TYPES.includes(f.type.toLowerCase())) {
+      setError(`不支援的檔案格式。請上傳影片檔 (${f.type})`);
       setFile(null);
       return;
     }
@@ -60,6 +64,7 @@ export default function UploadPage() {
       const { uploadUrl, fileUrl } = await getUploadUrl({
         filename: file.name,
         contentType,
+        fileSize: file.size,
       });
 
       // 2) upload direct to R2
@@ -84,7 +89,7 @@ export default function UploadPage() {
       <form onSubmit={onSubmit} className="panel">
         <input
           type="file"
-          accept="video/mp4,video/quicktime,.mp4,.mov"
+          accept={VALIDATION_CONFIG.ALLOWED_MIME_TYPES.join(',')}
           onChange={onFileChange}
           disabled={busy}
         />

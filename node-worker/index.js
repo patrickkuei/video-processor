@@ -10,6 +10,7 @@ import fs from "fs/promises";
 import path from "path";
 import "dotenv/config";
 import ffmpegPath from "ffmpeg-static";
+import ffprobePath from "ffprobe-static";
 
 // 環境變數
 const supabase = createClient(
@@ -28,7 +29,7 @@ const r2 = new S3Client({
 async function processJob(job) {
   console.log(`🎬 Processing job ${job.id}`);
 
-  const inputFile = path.join(os.tmpdir(), `input-${job.id}.mp4`);
+  const inputFile = path.join(os.tmpdir(), `input-${job.id}`);
   const outputFile = path.join(os.tmpdir(), `output-${job.id}.mp4`);
 
   try {
@@ -48,10 +49,25 @@ async function processJob(job) {
     const fileBuffer = await obj.Body.transformToByteArray();
     await fs.writeFile(inputFile, Buffer.from(fileBuffer));
 
-    // 3. ffmpeg 轉檔
+    // 3. ffprobe 驗證
+    console.log(`🕵️  Validating file ${inputFile}`);
+    const metadata = await runFfprobe(inputFile);
+    const videoStream = metadata.streams.find((s) => s.codec_type === "video");
+    if (!videoStream) {
+      throw new Error("Not a valid video file.");
+    }
+    const DURATION_LIMIT = 60; // 1 minute
+    if (metadata.format.duration > DURATION_LIMIT) {
+      throw new Error(
+        `Video duration (${metadata.format.duration}s) exceeds limit of ${DURATION_LIMIT}s.`
+      );
+    }
+    console.log(`✅ File validation passed.`);
+
+    // 4. ffmpeg 轉檔
     await runFfmpeg(inputFile, outputFile);
 
-    // 4. 上傳結果到 R2
+    // 5. 上傳結果到 R2
     const resultKey = `outputs/${job.id}.mp4`;
     await r2.send(
       new PutObjectCommand({
@@ -64,7 +80,7 @@ async function processJob(job) {
 
     const resultUrl = `r2://${bucket}/${resultKey}`;
 
-    // 5. 更新狀態 -> Done
+    // 6. 更新狀態 -> Done
     await supabase
       .from("jobs")
       .update({
@@ -80,7 +96,7 @@ async function processJob(job) {
       .from("jobs")
       .update({
         status: "Failed",
-        error: String(err),
+        error: String(err.message || err),
       })
       .eq("id", job.id);
   } finally {
@@ -88,6 +104,33 @@ async function processJob(job) {
     await fs.rm(inputFile, { force: true });
     await fs.rm(outputFile, { force: true });
   }
+}
+
+function runFfprobe(input) {
+  return new Promise((resolve, reject) => {
+    const ffprobe = spawn(ffprobePath, [
+      "-v",
+      "quiet",
+      "-print_format",
+      "json",
+      "-show_format",
+      "-show_streams",
+      input,
+    ]);
+    let stdout = "";
+    ffprobe.stdout.on("data", (d) => (stdout += d));
+    ffprobe.on("close", (code) => {
+      if (code === 0) {
+        try {
+          resolve(JSON.parse(stdout));
+        } catch (e) {
+          reject(new Error("Failed to parse ffprobe output."));
+        }
+      } else {
+        reject(new Error(`ffprobe exited with code ${code}`));
+      }
+    });
+  });
 }
 
 function runFfmpeg(input, output) {
