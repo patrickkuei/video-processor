@@ -151,6 +151,44 @@ router.get('/jobs/:id/url', async (request, env) => {
 	}
 });
 
+// GET /jobs?userId=xxx
+router.get('/jobs', async (request, env) => {
+	try {
+		const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+		const { searchParams } = new URL(request.url);
+		const userId = searchParams.get('userId');
+
+		if (!userId) {
+			return new Response(JSON.stringify({ error: 'userId is required' }), { status: 400 });
+		}
+
+		const { data, error } = await supabase.from('jobs').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+
+		if (error) {
+			return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+		}
+
+		return new Response(JSON.stringify(data), {
+			headers: { 'Content-Type': 'application/json' },
+		});
+	} catch (err) {
+		return new Response(JSON.stringify({ error: err.message || 'Internal error' }), { status: 500 });
+	}
+});
+
+router.get('/wake', async (req, env) => {
+	try {
+		const resp = await fetch(env.NODE_WORKER_URL + '/health', { method: 'GET' });
+		if (resp.ok) {
+			return Response.json({ status: 'awake' });
+		} else {
+			return Response.json({ status: 'asleep' });
+		}
+	} catch (err) {
+		return Response.json({ status: 'asleep' });
+	}
+});
+
 // fallback
 router.all('*', () => new Response('Not found', { status: 404 }));
 
