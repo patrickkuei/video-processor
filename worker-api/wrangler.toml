@@ -11,7 +11,7 @@ SUPABASE_URL = "https://paeqznvftnvfpxrvufcg.supabase.co"
 R2_ACCOUNT_ID = "dee7bfe0e9b2b9c09a16d24c60369f36"
 R2_BUCKET_NAME = "video-uploads"
 R2_ENDPOINT = "https://dee7bfe0e9b2b9c09a16d24c60369f36.r2.cloudflarestorage.com"
-NODE_WORKER_URL = "https://my-node-worker.onrender.com" # TBD
+NODE_WORKER_URL = "https://video-processor-ro88.onrender.com"
 
 [env.local.vars]
 NODE_WORKER_URL = "https://fb6c2d136997.ngrok-free.app"
