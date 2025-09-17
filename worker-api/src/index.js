@@ -5,6 +5,25 @@ import { AwsClient } from 'aws4fetch';
 // 初始化 router
 const router = Router();
 
+// 全域 CORS middleware
+async function handleCors(request, env) {
+	const origin = request.headers.get('Origin');
+	const allowed = env.ALLOWED_ORIGIN;
+
+	const corsHeaders = {
+		'Access-Control-Allow-Origin': allowed,
+		'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+		'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+	};
+
+	// 處理 OPTIONS 預檢請求
+	if (request.method === 'OPTIONS') {
+		return new Response(null, { status: 204, headers: corsHeaders });
+	}
+
+	return corsHeaders; // 回傳要加上的 headers
+}
+
 function getSupabase(env) {
 	return createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 }
@@ -47,7 +66,7 @@ router.post('/upload-url', async (request, env) => {
 		}
 
 		const objectKey = crypto.randomUUID() + '-' + filename;
-
+		console.log('env.R2_ACCESS_KEY_ID, ', env.R2_ACCESS_KEY_ID);
 		const client = new AwsClient({
 			accessKeyId: env.R2_ACCESS_KEY_ID,
 			secretAccessKey: env.R2_SECRET_ACCESS_KEY,
@@ -84,7 +103,7 @@ router.post('/jobs', async (request, env) => {
 			return new Response(JSON.stringify({ error: 'fileUrl is required' }), { status: 400 });
 		}
 		const supabase = getSupabase(env);
-		const finalUser = userId || 'mock-user-id';
+		const finalUser = userId || '4ff1cac7-7086-4128-bd83-7983ccd18db6';
 
 		const { data, error } = await supabase
 			.from('jobs')
@@ -105,7 +124,7 @@ router.post('/jobs', async (request, env) => {
 router.get('/jobs/:id', async (request, env) => {
 	try {
 		const supabase = getSupabase(env);
-		const { params } = request; // handler gets request.params
+		const { params } = request;
 		const { data, error } = await supabase.from('jobs').select('*').eq('id', params.id).single();
 
 		if (error || !data) {
@@ -192,5 +211,21 @@ router.get('/wake', async (req, env) => {
 // fallback
 router.all('*', () => new Response('Not found', { status: 404 }));
 
-// Export
-export default { ...router }; // or router.fetch?
+export default {
+	async fetch(request, env, ctx) {
+		const cors = await handleCors(request, env);
+		if (cors instanceof Response) return cors;
+
+		const response = await router.fetch(request, env, ctx);
+		if (response) {
+			const newHeaders = new Headers(response.headers);
+			for (const [k, v] of Object.entries(cors)) newHeaders.set(k, v);
+			return new Response(await response.text(), {
+				status: response.status,
+				headers: newHeaders,
+			});
+		}
+
+		return new Response('Not found', { status: 404, headers: cors });
+	},
+};

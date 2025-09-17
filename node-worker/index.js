@@ -10,8 +10,10 @@ import fs from "fs/promises";
 import path from "path";
 import "dotenv/config";
 import ffmpegPath from "ffmpeg-static";
-import ffprobePath from "ffprobe-static";
+import ffprobe from "ffprobe-static";
 import http from "http";
+
+const ffprobePath = ffprobe.path;
 
 // 環境變數
 const supabase = createClient(

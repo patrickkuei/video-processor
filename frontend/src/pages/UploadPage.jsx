@@ -4,10 +4,16 @@ import { createJob, getUploadUrl, putFileToUrl } from "../api/client";
 
 const VALIDATION_CONFIG = {
   MAX_SIZE_MB: 10,
-  ALLOWED_MIME_TYPES: ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-msvideo', 'video/x-matroska'],
+  ALLOWED_MIME_TYPES: [
+    "video/mp4",
+    "video/quicktime",
+    "video/webm",
+    "video/x-msvideo",
+    "video/x-matroska",
+  ],
   get MAX_SIZE_BYTES() {
     return this.MAX_SIZE_MB * 1024 * 1024;
-  }
+  },
 };
 
 function humanSize(bytes) {
@@ -36,7 +42,11 @@ export default function UploadPage() {
     }
     // Validate size
     if (f.size > VALIDATION_CONFIG.MAX_SIZE_BYTES) {
-      setError(`檔案過大，限制 ${VALIDATION_CONFIG.MAX_SIZE_MB}MB。現在是 ${humanSize(f.size)}`);
+      setError(
+        `檔案過大，限制 ${VALIDATION_CONFIG.MAX_SIZE_MB}MB。現在是 ${humanSize(
+          f.size
+        )}`
+      );
       setFile(null);
       return;
     }
@@ -89,7 +99,7 @@ export default function UploadPage() {
       <form onSubmit={onSubmit} className="panel">
         <input
           type="file"
-          accept={VALIDATION_CONFIG.ALLOWED_MIME_TYPES.join(',')}
+          accept={VALIDATION_CONFIG.ALLOWED_MIME_TYPES.join(",")}
           onChange={onFileChange}
           disabled={busy}
         />

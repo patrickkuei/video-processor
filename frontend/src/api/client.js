@@ -25,10 +25,10 @@ async function jsonFetch(url, options = {}) {
   return data;
 }
 
-export async function getUploadUrl({ filename, contentType }) {
+export async function getUploadUrl({ filename, contentType, fileSize }) {
   return jsonFetch(apiUrl("/upload-url"), {
     method: "POST",
-    body: JSON.stringify({ filename, contentType }),
+    body: JSON.stringify({ filename, contentType, fileSize }),
   });
 }
 
