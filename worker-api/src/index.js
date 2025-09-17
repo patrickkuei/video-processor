@@ -37,7 +37,7 @@ const VALIDATION_CONFIG = {
 };
 
 // upload-url
-router.post('/upload-url', async (request, env) => {
+router.post('/upload-url', async (request, env, ctx) => {
 	try {
 		const body = await request.json();
 		const { filename, contentType, fileSize } = body;
@@ -66,7 +66,6 @@ router.post('/upload-url', async (request, env) => {
 		}
 
 		const objectKey = crypto.randomUUID() + '-' + filename;
-		console.log('env.R2_ACCESS_KEY_ID, ', env.R2_ACCESS_KEY_ID);
 		const client = new AwsClient({
 			accessKeyId: env.R2_ACCESS_KEY_ID,
 			secretAccessKey: env.R2_SECRET_ACCESS_KEY,
@@ -81,6 +80,8 @@ router.post('/upload-url', async (request, env) => {
 			signQuery: true,
 			expires: 30,
 		});
+
+		ctx.waitUntil(fetch(env.NODE_WORKER_URL + '/health', { method: 'GET' }).catch((err) => console.error('Wake Node Worker failed:', err)));
 
 		return new Response(
 			JSON.stringify({

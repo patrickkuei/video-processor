@@ -153,7 +153,7 @@ function runFfmpeg(input, output) {
       "-b:a",
       "128k",
       "-vf",
-      "scale=640:-1,fps=30",
+      "scale=640:-2,fps=30",
       "-movflags",
       "+faststart",
       output,
@@ -168,8 +168,10 @@ function runFfmpeg(input, output) {
   });
 }
 
-async function pollJobs() {
-  while (true) {
+async function pollJobs(runForMs = 60000) {
+  const start = Date.now();
+
+  while (Date.now() - start < runForMs) {
     try {
       // 撈一筆 queued job
       const { data: jobs } = await supabase
@@ -179,7 +181,11 @@ async function pollJobs() {
         .limit(1);
 
       if (jobs && jobs.length > 0) {
+        console.log(`🎬 Found job ${jobs[0].id}, processing...`);
         await processJob(jobs[0]);
+
+        // 處理到任務 → 重置計時器（再延長 1 分鐘）
+        return pollJobs(runForMs);
       } else {
         console.log("⏳ No jobs, sleeping...");
         await sleep(5000);
@@ -199,6 +205,8 @@ const server = http.createServer((req, res) => {
   if (req.url.startsWith("/health")) {
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ status: "ok" }));
+
+    pollJobs().catch((err) => console.error("PollJobs failed", err));
   } else {
     res.writeHead(404);
     res.end();
@@ -207,5 +215,4 @@ const server = http.createServer((req, res) => {
 
 server.listen(process.env.PORT || 3000, () => {
   console.log("✅ Health check ready");
-  pollJobs();
 });
